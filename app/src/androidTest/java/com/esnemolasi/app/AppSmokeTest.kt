@@ -1,7 +1,10 @@
 package com.esnemolasi.app
 
 import android.graphics.Bitmap
-import android.os.Environment
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.os.Build
+import java.io.File
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -11,7 +14,6 @@ import androidx.lifecycle.Lifecycle
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class AppSmokeTest {
@@ -64,9 +66,25 @@ class AppSmokeTest {
 
     private fun screenshot(name: String) {
         val target = InstrumentationRegistry.getInstrumentation().targetContext
-        val dir = target.getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
-        dir.mkdirs()
         val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        if (Build.VERSION.SDK_INT < 29) {
+            File(target.getExternalFilesDir(null), "$name.png").outputStream().use {
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+            return
+        }
+        // CI uses API 35. Shared media survives the test runner uninstalling the app.
+        val resolver = target.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/EsnemeEvidence")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val uri = checkNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        checkNotNull(resolver.openOutputStream(uri)).use {
+            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
+        resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
     }
 }

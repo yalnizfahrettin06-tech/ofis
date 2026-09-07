@@ -21,6 +21,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    System.getenv("ESNEME_DEBUG_KEYSTORE")?.let { keyPath ->
+        signingConfigs.getByName("debug") { storeFile = file(keyPath) }
+    }
     buildTypes {
         debug { applicationIdSuffix = ".preview"; versionNameSuffix = "-preview" }
         release { isMinifyEnabled = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") }
