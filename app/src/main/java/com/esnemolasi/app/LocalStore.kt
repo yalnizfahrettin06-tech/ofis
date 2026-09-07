@@ -25,7 +25,7 @@ data class SessionRecord(
 )
 
 @Entity(tableName = "checkpoint")
-data class Checkpoint(@PrimaryKey val id: Int = 1, val payload: String, val savedAt: Long)
+data class Checkpoint(@PrimaryKey val id: Int = 1, val payload: String, val savedAt: Long, val localDate: String = "")
 
 @Entity(tableName = "reminder")
 data class ReminderLedger(

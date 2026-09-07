@@ -159,7 +159,10 @@ class RescheduleReceiver : BroadcastReceiver() {
         val result = goAsync()
         val app = context.applicationContext as EsnemeApplication
         app.background.launch {
-            try { app.reminders.reconcile(true) } finally { result.finish() }
+            try {
+                val clockChanged = intent.action == Intent.ACTION_TIME_CHANGED || intent.action == Intent.ACTION_TIMEZONE_CHANGED
+                app.reminders.reconcile(clockChanged)
+            } finally { result.finish() }
         }
     }
 }

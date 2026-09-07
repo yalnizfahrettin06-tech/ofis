@@ -34,22 +34,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             dao.prune(System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000)
             val saved = dao.checkpoint()
             if (saved != null) {
-                try {
-                    val snapshot = decodeCheckpoint(saved.payload)
-                    if (Catalog.routines.none { it.id == snapshot.routineId }) {
-                        dao.clearCheckpoint()
-                    } else {
-                        engine = SessionEngine(snapshot.routineId, snapshot.id, snapshot)
-                        if (snapshot.finished || System.currentTimeMillis() - saved.savedAt > 30 * 60_000L || saved.savedAt > System.currentTimeMillis()) {
-                            engine?.end(SystemClock.elapsedRealtime())
-                            finish(false)
-                        }
-                    }
-                } catch (e: CancellationException) { throw e }
-                catch (_: Exception) {
-                    engine = null
+                val snapshot = try { decodeCheckpoint(saved.payload) } catch (_: org.json.JSONException) { null }
+                if (snapshot == null || Catalog.routines.none { it.id == snapshot.routineId }) {
                     dao.clearCheckpoint()
                     mutable.update { it.copy(error = "Önceki mola geri yüklenemedi. Yeni bir mola başlatabilirsin.") }
+                } else {
+                    engine = SessionEngine(snapshot.routineId, snapshot.id, snapshot)
+                    if (snapshot.finished || System.currentTimeMillis() - saved.savedAt > 30 * 60_000L || saved.savedAt > System.currentTimeMillis()) {
+                        engine?.end(SystemClock.elapsedRealtime())
+                        // A storage failure must retain the checkpoint for a later retry.
+                        finish(false, saved.savedAt, saved.localDate)
+                    }
                 }
             }
             updatePersisted()
@@ -59,7 +54,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             while (isActive) {
-                delay(100)
+                delay(if (engine?.snapshot()?.paused == false) 16 else 500)
                 try {
                     lock.withLock {
                         val active = engine ?: return@withLock
@@ -157,7 +152,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun saveCheckpoint() {
         val active = engine ?: return
         val snapshot = active.snapshot()
-        dao.checkpoint(Checkpoint(payload = snapshot.toJson(), savedAt = System.currentTimeMillis()))
+        dao.checkpoint(Checkpoint(payload = snapshot.toJson(), savedAt = System.currentTimeMillis(), localDate = LocalDate.now().toString()))
         checkpointAt = SystemClock.elapsedRealtime()
         app.reminders.heartbeat()
     }
@@ -178,14 +173,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if(active.phase in setOf("movement", "transition")) movement else null,
             cue, active.stepRemainingMs, active.totalRemainingMs, snapshot.segmentElapsedMs, snapshot.activeMs, snapshot.paused)) }
     }
-    private suspend fun finish(show: Boolean) {
+    private suspend fun finish(show: Boolean, endedAt: Long = System.currentTimeMillis(), savedDate: String = "") {
         val snapshot = engine?.snapshot() ?: return
         if (!snapshot.finished) return
         val routine = Catalog.routine(snapshot.routineId)
-        val now = System.currentTimeMillis()
+        val now = endedAt
         val record = SessionRecord(snapshot.id, routine.id, routine.title, now, snapshot.activeMs,
             snapshot.movementMs, snapshot.skippedMoves, snapshot.status,
-            Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate().toString())
+            savedDate.ifEmpty { Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate().toString() })
         app.database.withTransaction { dao.insertSession(record); dao.clearCheckpoint() }
         engine = null
         mutable.update { it.copy(session = null, result = if(show) record else it.result) }
