@@ -38,7 +38,7 @@ Bu sınırlama, uygulama içindeki ilk kullanım ekranında da görünür. “Uz
 
 Tam kaynak ürün planı [plan.md](plan.md) dosyasındadır. Bu teslim planın **işleyen prototip** kapsamıdır. Ücretli Plus, seslendirme, favoriler, vardiya profilleri, Activity Recognition, bulut eşitleme ve mağaza yayını eklenmedi. Sabit rehber modu tek pozla çalışır; uzman onaylı çoklu poz üretimi sonraki içerik aşamasıdır.
 
-Rutinler doğrulanabilir Kotlin katalog verisi olarak paketlenmiştir; dış JSON indirme ve içerik sunucusu yoktur. Room şeması v1'dir, yeni veri tabanı migration gerektirmez; gelecek sürümlerde migration eklenmelidir. Seans kayıtları 90 gün tutulur, ekran son 100 kaydı gösterir. Üretim öncesinde tablo şema ihracı ve migration testleri genişletilmelidir.
+Rutinler doğrulanabilir Kotlin katalog verisi olarak paketlenmiştir; dış JSON indirme ve içerik sunucusu yoktur. Room şeması v2'dir; ilk önizleme şemasından kayıtları koruyan v1→v2 migration ve emülatör testi bulunur. Seans kayıtları 90 gün tutulur, ekran son 100 kaydı gösterir. Üretim öncesinde tablo şema ihracı ve migration kapsamı genişletilmelidir.
 
 Hatırlatmalar saniyesi saniyesine alarm değildir. Android uyku/pil kısıtları gecikme yaratabilir. Çalışma dışına taşan ve çok geciken öneriler yığılmaz. Force-stop sonrası uygulama yeniden açılana kadar bildirim beklenmemelidir. Telefonun sabitliği veya kullanıcının oturma süresi ölçülmez. Uygulama açıkken ayrıca sistem bildirimi gösterilmez.
 

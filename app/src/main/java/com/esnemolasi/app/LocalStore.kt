@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,7 +27,8 @@ data class SessionRecord(
 )
 
 @Entity(tableName = "checkpoint")
-data class Checkpoint(@PrimaryKey val id: Int = 1, val payload: String, val savedAt: Long, val localDate: String = "")
+data class Checkpoint(@PrimaryKey val id: Int = 1, val payload: String, val savedAt: Long,
+    @ColumnInfo(defaultValue = "''") val localDate: String = "")
 
 @Entity(tableName = "reminder")
 data class ReminderLedger(
@@ -55,8 +58,14 @@ interface LocalDao {
     @Upsert suspend fun ledger(ledger: ReminderLedger)
 }
 
-@Database(entities = [SessionRecord::class, Checkpoint::class, ReminderLedger::class], version = 1, exportSchema = false)
+@Database(entities = [SessionRecord::class, Checkpoint::class, ReminderLedger::class], version = 2, exportSchema = false)
 abstract class LocalDatabase : RoomDatabase() { abstract fun dao(): LocalDao }
+
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE checkpoint ADD COLUMN localDate TEXT NOT NULL DEFAULT ''")
+    }
+}
 
 class Preferences(private val context: Context) {
     private val key = stringPreferencesKey("settings_v1")

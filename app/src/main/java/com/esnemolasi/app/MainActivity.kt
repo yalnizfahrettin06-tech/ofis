@@ -20,7 +20,7 @@ import kotlinx.coroutines.*
 
 class EsnemeApplication : Application() {
     val database: LocalDatabase by lazy {
-        Room.databaseBuilder(this, LocalDatabase::class.java, "esneme.db").build()
+        Room.databaseBuilder(this, LocalDatabase::class.java, "esneme.db").addMigrations(MIGRATION_1_2).build()
     }
     val preferences by lazy { Preferences(this) }
     val reminders by lazy { ReminderScheduler(this) }
